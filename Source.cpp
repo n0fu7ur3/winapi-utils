@@ -1,6 +1,5 @@
 #include "Utility.h"
 
-
 int main()
 {
 	std::vector<PROCESSENTRY32> processes;
