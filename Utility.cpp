@@ -8,7 +8,7 @@ Utility::~Utility()
 {
 }
 
-DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
+DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool& sort) {
 	PROCESSENTRY32 processEntry;
 
 	// Take a snapshot of all processes in the system.
