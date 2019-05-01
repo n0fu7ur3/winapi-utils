@@ -18,5 +18,7 @@ public:
 	static DWORD GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort = false);
 	
 	static DWORD GetPorcessIdByName(const std::string& name);
+
+
 };
 

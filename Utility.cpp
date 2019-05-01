@@ -8,7 +8,7 @@ Utility::~Utility()
 {
 }
 
-DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool& sort) {
+DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 	PROCESSENTRY32 processEntry;
 
 	// Take a snapshot of all processes in the system.
@@ -50,7 +50,7 @@ DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool& sort) 
 DWORD Utility::GetPorcessIdByName(const std::string& name) {
 
 	std::vector<PROCESSENTRY32> processes;
-	if (Utility::GetProcesses(processes, true) == 0) {
+	if (Utility::GetProcesses(processes, false) == 0) {
 
 		for (const auto& p : processes) {
 			if (lstrcmpi(p.szExeFile, name.data()) == 0)
