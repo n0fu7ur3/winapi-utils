@@ -61,4 +61,61 @@ DWORD Utility::GetPorcessIdByName(const std::string& name) {
 	return -1;
 }
 
+HANDLE Utility::GetHandleByPid(DWORD pId) {
+	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pId);
+	DWORD err = GetLastError();
+	if (err) {
+		std::cout << "GetHandleByPid error :" << err << std::endl;
+	}
+	return hProcess;
+}
+
+HANDLE Utility::GetHandleByName(const std::string& name) {
+	DWORD pId = Utility::GetPorcessIdByName(name);
+	HANDLE h = GetHandleByPid(pId);
+	return h;
+}
+
+void Utility::EnableDebugPriv() {
+	HANDLE hToken;
+	LUID luid;
+	TOKEN_PRIVILEGES tkp;
+
+	OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken);
+
+	LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid);
+
+	tkp.PrivilegeCount = 1;
+	tkp.Privileges[0].Luid = luid;
+	tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	AdjustTokenPrivileges(hToken, false, &tkp, sizeof(tkp), NULL, NULL);
+
+	CloseHandle(hToken);
+}
+
+void Utility::ReadDosHeader(const std::string& name, PIMAGE_DOS_HEADER header) {
+	std::ifstream file;
+	file.open(name, std::ios_base::binary);
+
+	if (!file.is_open())
+		return;
+
+	// get length of file
+	file.seekg(0, std::ios::end);
+	size_t fileSize = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	std::vector<BYTE> data(sizeof(IMAGE_DOS_HEADER), 0);
+
+	file.read(reinterpret_cast<char*>(&data[0]), sizeof(IMAGE_DOS_HEADER));
+
+	if (fileSize >= sizeof(header))	{
+		std::memcpy(header, &data[0], sizeof(header));
+	}
+
+	std::cout << header->e_lfanew;
+}
+
+
 

@@ -1,15 +1,21 @@
 #pragma once
 
 #include <Windows.h>
-#include <TlHelp32.h>
+#include <TlHelp32.h>	//SNAPSHOT
+#include <winnt.h>		//IMAGE_DOS_HEADER
+
+//sizeof(_IMAGE_DOS_HEADER) == 60 bytes
+//_IMAGE_DOS_HEADER.e_magig == MZ always
+//_IMAGE_DOS_HEADER.e_lfanew(4bytes) - PE-header offset
+//next 200 bytes - dos program
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <string>
 #include <algorithm>
 
-class Utility
-{
+class Utility {
 public:
 	Utility();
 	~Utility();
@@ -19,6 +25,13 @@ public:
 	
 	static DWORD GetPorcessIdByName(const std::string& name);
 
+	static HANDLE GetHandleByPid(DWORD pId);
 
+	static HANDLE GetHandleByName(const std::string& name);
+
+	static void EnableDebugPriv();
+
+	static void ReadDosHeader(const std::string& name, PIMAGE_DOS_HEADER header);
+	
 };
 
