@@ -18,4 +18,12 @@ int main()
 	PIMAGE_DOS_HEADER pHeader = (PIMAGE_DOS_HEADER)malloc(sizeof(IMAGE_DOS_HEADER));//  PIMAGE_DOS_HEADER;
 
 	Utility::ReadDosHeader("D:\\Projects\\C_C++\\Repos\\winapi-utils\\Debug\\utility.exe", pHeader);
+
+	PIMAGE_NT_HEADERS pPeHeader = (PIMAGE_NT_HEADERS)malloc(sizeof(IMAGE_NT_HEADERS));
+
+	Utility::ReadPEHeader("D:\\Projects\\C_C++\\Repos\\winapi-utils\\Debug\\utility.exe", pHeader->e_lfanew ,pPeHeader);
+
+
+	free(pHeader);
+	free(pPeHeader);
 }

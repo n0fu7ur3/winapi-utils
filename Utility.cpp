@@ -61,7 +61,7 @@ DWORD Utility::GetPorcessIdByName(const std::string& name) {
 	return -1;
 }
 
-HANDLE Utility::GetHandleByPid(DWORD pId) {
+HANDLE Utility::GetHandleByPid(const DWORD pId) {
 	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pId);
 	DWORD err = GetLastError();
 	if (err) {
@@ -94,27 +94,60 @@ void Utility::EnableDebugPriv() {
 	CloseHandle(hToken);
 }
 
-void Utility::ReadDosHeader(const std::string& name, PIMAGE_DOS_HEADER header) {
+void Utility::ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER* pDosHeader) {
 	std::ifstream file;
 	file.open(name, std::ios_base::binary);
 
 	if (!file.is_open())
 		return;
 
+	std::vector<BYTE> data(sizeof(IMAGE_DOS_HEADER), 0);
+
+	//char* buf = new char[sizeof(IMAGE_DOS_HEADER)];
+
+	file.read(reinterpret_cast<char*>(&data[0]), sizeof(IMAGE_DOS_HEADER));
+	//file.read(buf, sizeof(IMAGE_DOS_HEADER));
+
+	std::memcpy(pDosHeader, &data[0], sizeof(IMAGE_DOS_HEADER));
+	//std::memcpy(pDosHeader, buf, sizeof(IMAGE_DOS_HEADER));
+
+	file.close();
+}
+
+void Utility::ReadPEHeader(const std::string& name, const LONG addr, PIMAGE_NT_HEADERS pPeHeader) {
+	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)malloc(sizeof(IMAGE_DOS_HEADER));
+	ReadDosHeader(name, pDosHeader);
+	size_t peHeaderOffset = pDosHeader->e_lfanew;
+
+	std::ifstream file;
+	file.open(name, std::ios_base::binary);
+
+	if (!file.is_open())
+		return;
+
+	std::vector<BYTE> data(sizeof(IMAGE_NT_HEADERS), 0);
+
+	file.seekg(peHeaderOffset);
+	file.read(reinterpret_cast<char*>(&data[0]), sizeof(IMAGE_NT_HEADERS));
+
+	std::memcpy(pPeHeader, &data[0], sizeof(IMAGE_NT_HEADERS));
+
+	file.close();
+}
+
+int Utility::GetFileSize(const std::string& name)
+{
+	std::ifstream file;
+	file.open(name, std::ios_base::binary);
+
+	if (!file.is_open())
+		return 0;
+
 	// get length of file
 	file.seekg(0, std::ios::end);
 	size_t fileSize = file.tellg();
 	file.seekg(0, std::ios::beg);
-
-	std::vector<BYTE> data(sizeof(IMAGE_DOS_HEADER), 0);
-
-	file.read(reinterpret_cast<char*>(&data[0]), sizeof(IMAGE_DOS_HEADER));
-
-	if (fileSize >= sizeof(header))	{
-		std::memcpy(header, &data[0], sizeof(header));
-	}
-
-	std::cout << header->e_lfanew;
+	return fileSize;
 }
 
 
