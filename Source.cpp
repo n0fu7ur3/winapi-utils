@@ -1,7 +1,6 @@
 #include "Utility.h"
 
-void PrintProcesses()
-{
+void PrintProcesses() {
 	std::vector<PROCESSENTRY32> processes;
 	if (Utility::GetProcesses(processes, true) == 0) {
 
@@ -11,19 +10,29 @@ void PrintProcesses()
 	}
 }
 
+void PrintSections(std::string& filePath) {
+	IMAGE_NT_HEADERS peHeader{ 0 };
+	Utility::ReadPEHeader(filePath, peHeader);
+
+	for (int i = 0; i < peHeader.FileHeader.NumberOfSections; ++i) {
+		IMAGE_SECTION_HEADER sectionHeader{ 0 };
+		Utility::ReadSection(filePath, sectionHeader, i);
+		std::cout << sectionHeader.Name << std::endl;
+	}
+}
+
 int main()
 {
 	Utility::EnableDebugPriv();
 
-	PIMAGE_DOS_HEADER pHeader = (PIMAGE_DOS_HEADER)malloc(sizeof(IMAGE_DOS_HEADER));//  PIMAGE_DOS_HEADER;
+	std::string filePath = "D:\\Projects\\C_C++\\Repos\\winapi-utils\\Debug\\utility.exe";
 
-	Utility::ReadDosHeader("D:\\Projects\\C_C++\\Repos\\winapi-utils\\Debug\\utility.exe", pHeader);
+	IMAGE_DOS_HEADER dosHeader{ 0 };
+	Utility::ReadDosHeader(filePath, dosHeader);
 
-	PIMAGE_NT_HEADERS pPeHeader = (PIMAGE_NT_HEADERS)malloc(sizeof(IMAGE_NT_HEADERS));
+	IMAGE_NT_HEADERS peHeader{ 0 };
+	Utility::ReadPEHeader(filePath, peHeader);
 
-	Utility::ReadPEHeader("D:\\Projects\\C_C++\\Repos\\winapi-utils\\Debug\\utility.exe", pHeader->e_lfanew ,pPeHeader);
-
-
-	free(pHeader);
-	free(pPeHeader);
+	std::vector<_IMAGE_SECTION_HEADER> v(0);
+	Utility::GetSections(filePath, v);
 }

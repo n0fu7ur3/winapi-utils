@@ -28,6 +28,8 @@ public:
 	Utility();
 	~Utility();
 
+	static void EnableDebugPriv();
+
 	//return vector of processes sorted by pId
 	static DWORD GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort = false);
 	
@@ -37,13 +39,17 @@ public:
 
 	static HANDLE GetHandleByName(const std::string& name);
 
-	static void EnableDebugPriv();
+	static DWORD GetFileSize(const std::string& name);
 
-	static void ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER* pDosHeader);
+	static bool ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER& dosHeader);
 
-	static void ReadPEHeader(const std::string& name, const LONG addr, PIMAGE_NT_HEADERS pPeHeader);
+	static bool ReadPEHeader(const std::string& name,  IMAGE_NT_HEADERS& peHeader);
 
-	static int GetFileSize(const std::string& name);
-	
+	static bool ReadSection(const std::string& name, IMAGE_SECTION_HEADER& sectionHeader, const int sectionNumber);
+
+	//vector.size() == peHeader->FileHeader->NumberOfSections
+	static bool GetSections(const std::string& name, std::vector<_IMAGE_SECTION_HEADER>& v);
+
+	static bool GetSectionData(const std::string& name, const int sectionNumber);
 };
 
