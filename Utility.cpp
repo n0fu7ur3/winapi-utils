@@ -127,18 +127,23 @@ void Utility::ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER& dosHeader
 		fileSize = Utility::GetFileSize(name);
 	}
 	catch (std::exception & ex) {
+		fclose(fp);
 		throw;
 	}
 
-	if (fileSize < sizeof(IMAGE_DOS_HEADER) + sizeof(IMAGE_NT_HEADERS))
+	if (fileSize < sizeof(IMAGE_DOS_HEADER) + sizeof(IMAGE_NT_HEADERS)) {
+		fclose(fp);
 		throw std::exception("bad file");
+	}
 
 	fseek(fp, 0, SEEK_SET);
 	fread(&dosHeader, 1, sizeof(dosHeader), fp);
 
 	//5A * 100 + 4D
-	if (dosHeader.e_magic != 'M' + 'Z' * 256)
+	if (dosHeader.e_magic != 'M' + 'Z' * 256) {
+		fclose(fp);
 		throw std::exception("e_magic != MZ");
+	}
 
 	fclose(fp);
 }
@@ -155,23 +160,30 @@ void Utility::ReadPEHeader(const std::string& name, IMAGE_NT_HEADERS& peHeader) 
 		fileSize = Utility::GetFileSize(name);
 	}
 	catch (std::exception & ex) {
+		fclose(fp);
 		throw;
 	}
 
 	DWORD RawPointerToPeHeader = dosHeader.e_lfanew;
-	if (fileSize <= RawPointerToPeHeader + sizeof(IMAGE_NT_HEADERS))
+	if (fileSize <= RawPointerToPeHeader + sizeof(IMAGE_NT_HEADERS)) {
+		fclose(fp);
 		throw std::exception("bad file");
+	}
 
 	fseek(fp, RawPointerToPeHeader, SEEK_SET);
 	fread(&peHeader.Signature, 1, sizeof(DWORD), fp);
 
-	if (peHeader.Signature != 'P' + 'E' * 256)
+	if (peHeader.Signature != 'P' + 'E' * 256) {
+		fclose(fp);
 		throw std::exception("PE signature != PE");
+	}
 
 	fread(&peHeader.FileHeader, 1, sizeof(peHeader.FileHeader), fp);
 
-	if (peHeader.FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER))
+	if (peHeader.FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER)) {
+		fclose(fp);
 		throw std::exception("bad SizeOfOptionalHeader");
+	}
 
 	int sectionCount = peHeader.FileHeader.NumberOfSections;
 	if (sectionCount == 0) {
@@ -196,13 +208,16 @@ void Utility::ReadSection(const std::string& name, IMAGE_SECTION_HEADER& section
 		Utility::ReadPEHeader(name, peHeader);
 	}
 	catch (std::exception & ex) {
+		fclose(fp);
 		throw;
 	}
 
 	if (fileSize <= dosHeader.e_lfanew +
 		sizeof(IMAGE_NT_HEADERS) +
-		peHeader.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER))
+		peHeader.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER)) {
+		fclose(fp);
 		throw std::exception("bad file");
+	}
 
 	fseek(fp,
 		dosHeader.e_lfanew + sizeof(IMAGE_NT_HEADERS) +
@@ -243,6 +258,7 @@ void Utility::GetSectionData(const std::string& name, const int sectionNumber) {
 		Utility::ReadSection(name, sectionHeader, sectionNumber);
 	}
 	catch (std::exception & ex) {
+		fclose(fp);
 		throw;
 	}
 
@@ -250,12 +266,12 @@ void Utility::GetSectionData(const std::string& name, const int sectionNumber) {
 		sectionHeader.Misc.VirtualSize : sectionHeader.PointerToRawData;
 
 	if (byteCount == 0)	{
-		throw std::exception("No data to read for target section");
 		fclose(fp);
+		throw std::exception("No data to read for target section");
 	}
 	else if (byteCount + sectionHeader.PointerToRawData > fileSize)	{
-		throw std::exception("Bad section data");
 		fclose(fp);
+		throw std::exception("Bad section data");
 	}
 	fseek(fp, sectionHeader.PointerToRawData, SEEK_SET);
 

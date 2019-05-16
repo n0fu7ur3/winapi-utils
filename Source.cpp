@@ -46,5 +46,5 @@ int main()
 
 	HANDLE h = Utility::GetHandleByName("telegram.exe");
 	HandleRAII h1(h);
-	std::cout << h;
+	std::cout << h << std::endl;
 }

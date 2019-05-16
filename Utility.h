@@ -27,15 +27,14 @@
 class HandleRAII {
 	HANDLE mHandle;
 public:
-	HandleRAII(HANDLE h) {
+	HandleRAII(HANDLE h) : mHandle(h) {
 		std::cout << "HANDLE: " << h << " ";
-		mHandle = h;
 		std::cout << "captured" << std::endl;
 	}
 	~HandleRAII() {
 		std::cout << "HANDLE: " << mHandle << " ";
 			CloseHandle(mHandle);
-		std::cout << "handle closed" << std::endl;
+		std::cout << "closed" << std::endl;
 	}
 	HANDLE Get() {
 		return mHandle;
