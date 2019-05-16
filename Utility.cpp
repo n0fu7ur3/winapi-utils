@@ -26,7 +26,7 @@ void Utility::EnableDebugPriv() {
 	CloseHandle(hToken);
 }
 
-DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
+void Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 	PROCESSENTRY32 processEntry;
 
 	// Take a snapshot of all processes in the system.
@@ -34,8 +34,10 @@ DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 
 	if (hProcessSnap == INVALID_HANDLE_VALUE) {
 		DWORD err = GetLastError();
-		CloseHandle(&hProcessSnap);
-		return err;
+		CloseHandle(hProcessSnap);
+		std::string err_str = "CreateToolhelp32Snapshot error: ";
+		err_str += std::to_string(err);
+		throw std::exception(err_str.c_str());
 	}
 
 	// Set the size of the structure before using it.
@@ -45,8 +47,10 @@ DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 	// and exit if unsuccessful
 	if (!Process32First(hProcessSnap, &processEntry)) {
 		DWORD err = GetLastError();
-		CloseHandle(&hProcessSnap);
-		return err;
+		CloseHandle(hProcessSnap);
+		std::string err_str = "cant take information about the first process, error: ";
+		err_str += std::to_string(err);
+		throw std::exception(err_str.c_str());
 	}
 
 	processes.clear();
@@ -62,45 +66,53 @@ DWORD Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 			return r.th32ProcessID < l.th32ProcessID;
 			});
 	}
-	return 0;
 }
 
 DWORD Utility::GetPorcessIdByName(const std::string& name) {
-
 	std::vector<PROCESSENTRY32> processes;
-	if (Utility::GetProcesses(processes, false) == 0) {
-
-		for (const auto& p : processes) {
-			if (lstrcmpi(p.szExeFile, name.data()) == 0)
-				return p.th32ProcessID;
-		}
+	try {
+		Utility::GetProcesses(processes, false);
 	}
-	
-	return -1;
+	catch (std::exception& ex) {
+		throw;
+	}
+	for (const auto& p : processes) {
+		if (lstrcmpi(p.szExeFile, name.data()) == 0)
+			return p.th32ProcessID;
+	}
+	throw std::exception("process not found");
 }
 
 HANDLE Utility::GetHandleByPid(const DWORD pId) {
 	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pId);
 	DWORD err = GetLastError();
 	if (err) {
-		std::cout << "GetHandleByPid error :" << err << std::endl;
+		CloseHandle(hProcess);
+		std::string error = "Open process error: ";
+		error += std::to_string(err);
+		throw std::exception(error.c_str());
 	}
 	return hProcess;
 }
 
 HANDLE Utility::GetHandleByName(const std::string& name) {
-	DWORD pId = Utility::GetPorcessIdByName(name);
-	HANDLE h = GetHandleByPid(pId);
-	return h;
+	DWORD pId = 0;
+	try {
+		pId = Utility::GetPorcessIdByName(name);
+		HANDLE h = GetHandleByPid(pId);
+		return h;
+	}
+	catch (std::exception & ex) {
+		throw;
+	}	
 }
 
-DWORD Utility::GetFileSize(const std::string& name)
-{
+DWORD Utility::GetFileSize(const std::string& name) {
 	std::ifstream file;
 	file.open(name, std::ios_base::binary);
 
 	if (!file.is_open())
-		return 0;
+		throw std::exception("cant open file");
 
 	// get length of file
 	file.seekg(0, std::ios::end);
@@ -109,89 +121,92 @@ DWORD Utility::GetFileSize(const std::string& name)
 	return fileSize;
 }
 
-bool Utility::ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER& dosHeader) {
+void Utility::ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER& dosHeader) {
+	DWORD fileSize = 0;
 	FILE* fp = fopen(name.data(), "rb");
 	if (!fp)
-		return false;
+		throw std::exception("cant open file");
 
-	DWORD fileSize = Utility::GetFileSize(name);
-	if (fileSize == 0)
-		return false;
+	try {
+		fileSize = Utility::GetFileSize(name);
+	}
+	catch (std::exception & ex) {
+		throw;
+	}
 
 	if (fileSize < sizeof(IMAGE_DOS_HEADER) + sizeof(IMAGE_NT_HEADERS))
-		return false;
+		throw std::exception("bad file");
 
 	fseek(fp, 0, SEEK_SET);
 	fread(&dosHeader, 1, sizeof(dosHeader), fp);
 
 	//5A * 100 + 4D
 	if (dosHeader.e_magic != 'M' + 'Z' * 256)
-		return false;
+		throw std::exception("e_magic != MZ");
 
 	fclose(fp);
-	return true;
 }
 
-bool Utility::ReadPEHeader(const std::string& name, IMAGE_NT_HEADERS& peHeader) {
+void Utility::ReadPEHeader(const std::string& name, IMAGE_NT_HEADERS& peHeader) {
 	FILE* fp = fopen(name.data(), "rb");
+	DWORD fileSize = 0;
 	if (!fp)
-		return false;
+		throw std::exception("cant open file");
 
 	_IMAGE_DOS_HEADER dosHeader{ 0 };
-	Utility::ReadDosHeader(name, dosHeader);
-
-	DWORD fileSize = Utility::GetFileSize(name);
-	if (fileSize == 0)
-		return false;
-
-	if (!Utility::ReadDosHeader(name, dosHeader))
-		return false;
+	try {
+		Utility::ReadDosHeader(name, dosHeader);
+		fileSize = Utility::GetFileSize(name);
+	}
+	catch (std::exception & ex) {
+		throw;
+	}
 
 	DWORD RawPointerToPeHeader = dosHeader.e_lfanew;
 	if (fileSize <= RawPointerToPeHeader + sizeof(IMAGE_NT_HEADERS))
-		return false;
+		throw std::exception("bad file");
 
 	fseek(fp, RawPointerToPeHeader, SEEK_SET);
 	fread(&peHeader.Signature, 1, sizeof(DWORD), fp);
 
 	if (peHeader.Signature != 'P' + 'E' * 256)
-		return false;
+		throw std::exception("PE signature != PE");
 
 	fread(&peHeader.FileHeader, 1, sizeof(peHeader.FileHeader), fp);
 
 	if (peHeader.FileHeader.SizeOfOptionalHeader != sizeof(IMAGE_OPTIONAL_HEADER))
-		return false;
+		throw std::exception("bad SizeOfOptionalHeader");
 
 	int sectionCount = peHeader.FileHeader.NumberOfSections;
 	if (sectionCount == 0) {
-		printf("No section for this file.\n");
 		fclose(fp);
-		return false;
+		throw std::exception("No section for this file");
 	}
 
 	fclose(fp);
-	return true;
 }
 
-bool Utility::ReadSection(const std::string& name, IMAGE_SECTION_HEADER& sectionHeader, const int sectionNumber) {
+void Utility::ReadSection(const std::string& name, IMAGE_SECTION_HEADER& sectionHeader, const int sectionNumber) {
 	FILE* fp = fopen(name.data(), "rb");
+	DWORD fileSize = 0;
 	if (!fp)
-		return false;
+		throw std::exception("cant open file");
 
 	IMAGE_DOS_HEADER dosHeader{ 0 };
-	Utility::ReadDosHeader(name, dosHeader);
-
-	DWORD fileSize = Utility::GetFileSize(name);
-	if (fileSize == 0)
-		return false;
-
 	IMAGE_NT_HEADERS peHeader{ 0 };
-	Utility::ReadPEHeader(name, peHeader);
-	
+	try {
+		Utility::ReadDosHeader(name, dosHeader);
+		fileSize = Utility::GetFileSize(name);
+		Utility::ReadPEHeader(name, peHeader);
+	}
+	catch (std::exception & ex) {
+		throw;
+	}
+
 	if (fileSize <= dosHeader.e_lfanew +
 		sizeof(IMAGE_NT_HEADERS) +
 		peHeader.FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER))
-		return false;
+		throw std::exception("bad file");
 
 	fseek(fp,
 		dosHeader.e_lfanew + sizeof(IMAGE_NT_HEADERS) +
@@ -200,50 +215,51 @@ bool Utility::ReadSection(const std::string& name, IMAGE_SECTION_HEADER& section
 	fread(&sectionHeader, 1, sizeof(sectionHeader), fp);
 
 	fclose(fp);
-	return true;
 }
 
-bool Utility::GetSections(const std::string& name, std::vector<_IMAGE_SECTION_HEADER>& v) {
+void Utility::GetSections(const std::string& name, std::vector<_IMAGE_SECTION_HEADER>& v) {
 	v.clear();
 
 	IMAGE_NT_HEADERS peHeader{ 0 };
-	if (!Utility::ReadPEHeader(name, peHeader))
-		return false;
+	try {
+		Utility::ReadPEHeader(name, peHeader);
+	}
+	catch (std::exception & ex) {
+		throw;
+	}
 
 	for (int i = 0; i < peHeader.FileHeader.NumberOfSections; ++i) {
 		IMAGE_SECTION_HEADER sectionHeader{ 0 };
 		Utility::ReadSection(name, sectionHeader, i);
 		v.push_back(sectionHeader);
 	}
-
-	return true;
 }
 
-bool Utility::GetSectionData(const std::string& name, const int sectionNumber) {
+void Utility::GetSectionData(const std::string& name, const int sectionNumber) {
 	FILE* fp = fopen(name.data(), "rb");
+	DWORD fileSize = 0;
 	if (!fp)
-		return false;
-
-	DWORD fileSize = Utility::GetFileSize(name);
-	if (fileSize == 0)
-		return false;
+		throw std::exception("cant open file");
 
 	IMAGE_SECTION_HEADER sectionHeader{ 0 };
-	if (!Utility::ReadSection(name, sectionHeader, sectionNumber))
-		return false;
+	try {
+		fileSize = Utility::GetFileSize(name);
+		Utility::ReadSection(name, sectionHeader, sectionNumber);
+	}
+	catch (std::exception & ex) {
+		throw;
+	}
 
 	DWORD byteCount = sectionHeader.Misc.VirtualSize < sectionHeader.PointerToRawData ?
 		sectionHeader.Misc.VirtualSize : sectionHeader.PointerToRawData;
 
 	if (byteCount == 0)	{
-		printf("No data to read for target section.\n");
+		throw std::exception("No data to read for target section");
 		fclose(fp);
-		return false;
 	}
 	else if (byteCount + sectionHeader.PointerToRawData > fileSize)	{
-		printf("Bad section data.\n");
+		throw std::exception("Bad section data");
 		fclose(fp);
-		return false;
 	}
 	fseek(fp, sectionHeader.PointerToRawData, SEEK_SET);
 
@@ -252,6 +268,5 @@ bool Utility::GetSectionData(const std::string& name, const int sectionNumber) {
 	fread(pData, 1, byteCount, fp);
 	
 	fclose(fp);
-	return true;
 }
 

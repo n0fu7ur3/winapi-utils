@@ -31,7 +31,7 @@ public:
 	static void EnableDebugPriv();
 
 	//return vector of processes sorted by pId
-	static DWORD GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort = false);
+	static void GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort = false);
 	
 	static DWORD GetPorcessIdByName(const std::string& name);
 
@@ -41,15 +41,15 @@ public:
 
 	static DWORD GetFileSize(const std::string& name);
 
-	static bool ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER& dosHeader);
+	static void ReadDosHeader(const std::string& name, IMAGE_DOS_HEADER& dosHeader);
 
-	static bool ReadPEHeader(const std::string& name,  IMAGE_NT_HEADERS& peHeader);
+	static void ReadPEHeader(const std::string& name,  IMAGE_NT_HEADERS& peHeader);
 
-	static bool ReadSection(const std::string& name, IMAGE_SECTION_HEADER& sectionHeader, const int sectionNumber);
+	static void ReadSection(const std::string& name, IMAGE_SECTION_HEADER& sectionHeader, const int sectionNumber);
 
 	//vector.size() == peHeader->FileHeader->NumberOfSections
-	static bool GetSections(const std::string& name, std::vector<_IMAGE_SECTION_HEADER>& v);
+	static void GetSections(const std::string& name, std::vector<_IMAGE_SECTION_HEADER>& v);
 
-	static bool GetSectionData(const std::string& name, const int sectionNumber);
+	static void GetSectionData(const std::string& name, const int sectionNumber);
 };
 

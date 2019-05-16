@@ -2,11 +2,14 @@
 
 void PrintProcesses() {
 	std::vector<PROCESSENTRY32> processes;
-	if (Utility::GetProcesses(processes, true) == 0) {
-
-		for (const auto& p : processes) {
-			std::cout << "pId: " << p.th32ProcessID << " " << "Name: " << p.szExeFile << std::endl;
-		}
+	try {
+		Utility::GetProcesses(processes, true);
+	}
+	catch(DWORD err) {
+		std::cout << "error: " << err << std::endl;
+	}
+	for (const auto& p : processes) {
+		std::cout << "pId: " << p.th32ProcessID << " " << "Name: " << p.szExeFile << std::endl;
 	}
 }
 
@@ -27,12 +30,17 @@ int main()
 
 	std::string filePath = "D:\\Projects\\C_C++\\Repos\\winapi-utils\\Debug\\utility.exe";
 
-	IMAGE_DOS_HEADER dosHeader{ 0 };
-	Utility::ReadDosHeader(filePath, dosHeader);
+	try {
+		IMAGE_DOS_HEADER dosHeader{ 0 };
+		Utility::ReadDosHeader(filePath, dosHeader);
 
-	IMAGE_NT_HEADERS peHeader{ 0 };
-	Utility::ReadPEHeader(filePath, peHeader);
+		IMAGE_NT_HEADERS peHeader{ 0 };
+		Utility::ReadPEHeader(filePath, peHeader);
 
-	std::vector<_IMAGE_SECTION_HEADER> v(0);
-	Utility::GetSections(filePath, v);
+		std::vector<_IMAGE_SECTION_HEADER> v(0);
+		Utility::GetSections(filePath, v);
+	}
+	catch (std::exception & ex) {
+		std::cout << ex.what();
+	}
 }
