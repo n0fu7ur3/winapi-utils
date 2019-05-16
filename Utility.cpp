@@ -30,11 +30,10 @@ void Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 	PROCESSENTRY32 processEntry;
 
 	// Take a snapshot of all processes in the system.
-	HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	HandleRAII hProcessSnap(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0));
 
-	if (hProcessSnap == INVALID_HANDLE_VALUE) {
+	if (hProcessSnap.Get() == INVALID_HANDLE_VALUE) {
 		DWORD err = GetLastError();
-		CloseHandle(hProcessSnap);
 		std::string err_str = "CreateToolhelp32Snapshot error: ";
 		err_str += std::to_string(err);
 		throw std::exception(err_str.c_str());
@@ -45,9 +44,8 @@ void Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 
 	// Retrieve information about the first process,
 	// and exit if unsuccessful
-	if (!Process32First(hProcessSnap, &processEntry)) {
+	if (!Process32First(hProcessSnap.Get(), &processEntry)) {
 		DWORD err = GetLastError();
-		CloseHandle(hProcessSnap);
 		std::string err_str = "cant take information about the first process, error: ";
 		err_str += std::to_string(err);
 		throw std::exception(err_str.c_str());
@@ -57,9 +55,7 @@ void Utility::GetProcesses(std::vector<PROCESSENTRY32>& processes, bool sort) {
 
 	do {
 		processes.push_back(processEntry);
-	} while (Process32Next(hProcessSnap, &processEntry));
-
-	CloseHandle(hProcessSnap);
+	} while (Process32Next(hProcessSnap.Get(), &processEntry));
 
 	if (sort) {
 		std::sort(processes.begin(), processes.end(), [](PROCESSENTRY32 r, PROCESSENTRY32 l) {
@@ -83,7 +79,7 @@ DWORD Utility::GetPorcessIdByName(const std::string& name) {
 	throw std::exception("process not found");
 }
 
-HANDLE Utility::GetHandleByPid(const DWORD pId) {
+HANDLE Utility::GetHandleByPid(const DWORD& pId) {
 	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pId);
 	DWORD err = GetLastError();
 	if (err) {
@@ -99,7 +95,7 @@ HANDLE Utility::GetHandleByName(const std::string& name) {
 	DWORD pId = 0;
 	try {
 		pId = Utility::GetPorcessIdByName(name);
-		HANDLE h = GetHandleByPid(pId);
+		HANDLE h = Utility::GetHandleByPid(pId);
 		return h;
 	}
 	catch (std::exception & ex) {

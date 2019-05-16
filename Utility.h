@@ -22,6 +22,25 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <memory>
+
+class HandleRAII {
+	HANDLE mHandle;
+public:
+	HandleRAII(HANDLE h) {
+		std::cout << "HANDLE: " << h << " ";
+		mHandle = h;
+		std::cout << "captured" << std::endl;
+	}
+	~HandleRAII() {
+		std::cout << "HANDLE: " << mHandle << " ";
+			CloseHandle(mHandle);
+		std::cout << "handle closed" << std::endl;
+	}
+	HANDLE Get() {
+		return mHandle;
+	}
+};
 
 class Utility {
 public:
@@ -35,7 +54,7 @@ public:
 	
 	static DWORD GetPorcessIdByName(const std::string& name);
 
-	static HANDLE GetHandleByPid(const DWORD pId);
+	static HANDLE GetHandleByPid(const DWORD& pId);
 
 	static HANDLE GetHandleByName(const std::string& name);
 

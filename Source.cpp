@@ -43,4 +43,8 @@ int main()
 	catch (std::exception & ex) {
 		std::cout << ex.what();
 	}
+
+	HANDLE h = Utility::GetHandleByName("telegram.exe");
+	HandleRAII h1(h);
+	std::cout << h;
 }
